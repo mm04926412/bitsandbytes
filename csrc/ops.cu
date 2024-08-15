@@ -81,9 +81,11 @@ template<typename T, int DATA_TYPE> void dequantizeBlockwise(float *code, unsign
   int num_blocks = n/blocksize;
   num_blocks = n % blocksize == 0 ? num_blocks : num_blocks + 1;
   int tile_size = (DATA_TYPE > 0) ? 1024 : 512;
+  assert(blocksize > 0 && (blocksize & (blocksize - 1)) == 0 && "blocksize must be a power of two");
+  int blocksizeLogTwo = __ffs(blocksize) - 1;
 
   if(DATA_TYPE > 0)
-    kDequantizeBlockwise<T, 512, 64, 8, DATA_TYPE><<<(n+tile_size-1)/tile_size, 64>>>(code, A, absmax, out, blocksize/2, n);
+    kDequantizeBlockwise<T, 512, 64, 8, DATA_TYPE><<<(n+tile_size-1)/tile_size, 64>>>(code, A, absmax, out, blocksize-1, n);
   else
     kDequantizeBlockwise<T, 512, 64, 8, DATA_TYPE><<<(n+tile_size-1)/tile_size, 64>>>(code, A, absmax, out, blocksize, n);
 
@@ -728,7 +730,7 @@ template <typename T, int BITS> void gemm_4bit_inference_naive(int m, int n, int
 {
 
 	int num_blocks = (m+3)/4;
-
+  
   kgemm_4bit_inference_naive<T, 128, BITS><<< num_blocks, 128, 0, 0 >>>(m,  n,  k, A,  B, absmax, datatype, out, lda, ldb, ldc, blocksize);
   CUDA_CHECK_RETURN(cudaPeekAtLastError());
 }
